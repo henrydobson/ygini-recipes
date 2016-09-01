@@ -17,7 +17,8 @@
 """See docstring for GitCommitAndPush class"""
 
 from autopkglib import Processor
-from subprocess import call
+import subprocess
+import os
 
 #pylint: disable=no-name-in-module
 try:
@@ -43,10 +44,24 @@ class GitFatCommitAndPush(Processor):
             "MUNKI_REPO",
             "com.github.autopkg")
         if repo_path:
-            call(['git', 'add', '-A'], cwd=repo_path)
-            call(['git', 'commit', '-m', 'Automatic commit after AutoPKG run'], cwd=repo_path)
-            call(['git', 'fat', 'push'], cwd=repo_path)
-            call(['git', 'push'], cwd=repo_path)
+            my_env = os.environ.copy()
+            my_env["PATH"] = "/usr/local/bin:/usr/local/git/bin:" + my_env["PATH"]
+            my_env["SHELL"] = "/bin/bash"
+            stash_output = subprocess.call(['git', 'stash'], cwd=repo_path, env=my_env)
+            self.output([stash_output])
+            pull_output = subprocess.call(['git', 'pull'], cwd=repo_path, env=my_env)
+            self.output([pull_output])
+            apply_output = subprocess.call(['git', 'stash', 'apply'], cwd=repo_path, env=my_env)
+            self.output([apply_output])
+            catalogs_output = subprocess.call(['makecatalogs'], cwd=repo_path, env=my_env)
+            self.output([catalogs_output])
+            add_output = subprocess.call(['git', 'add', '-A'], cwd=repo_path, env=my_env)
+            self.output([add_output])
+            commit_output = subprocess.call(['git', 'commit', '-m', 'Automatic commit after AutoPKG run'], cwd=repo_path, env=my_env)
+            self.output([commit_output])
+            fatpush_output = subprocess.call(['git', 'fat', 'push'], cwd=repo_path, env=my_env)
+            self.output([fatpush_output])
+            push_output = subprocess.call(['git', 'push'], cwd=repo_path, env=my_env)
         else:
             self.output("No munki repo set, nothing pushed")
 
